@@ -1,12 +1,14 @@
+### --- R Challange 3, Alvin Aziz, 08.04.2021 --- ###
 library(assertthat)
-
+library(dplyr)
+library(tidyr)
 
 ### Challenge III
-# * Load both the 2020 election results ('wahlergebnisse.rds') and stadtteil_profile ('stadtteil_profil.rds').
-# * Calculate each parties' election result per district (valid ballots are basis for this calculation).
+# X Load both the 2020 election results ('wahlergebnisse.rds') and stadtteil_profile ('stadtteil_profil.rds').
+# X Calculate each parties' election result per district (valid ballots are basis for this calculation).
 # * Hint: investigate the function `across()` for applying calculation on multiple columns at once.
-# * Calculate the ratio of people with a migration background in the total population of each district.
-# * Compare migration ratio to results of the AfD
+# X Calculate the ratio of people with a migration background in the total population of each district.
+# X Compare migration ratio to results of the AfD
 # * Compare the voter turnout to both other variables.
 # * Join the two data sets.
 # * Arrange by the AFD's results in descending order. 
@@ -14,7 +16,36 @@ library(assertthat)
 # * Hint: the final table must have the following columns: stadtteil, mig_ratio, turn_out, afd.
 
 
-# combined <- …
+wahlergebnisse = readRDS("./wahlergebnisse.rds")
+stadtteil_profil = readRDS("./stadtteil_profil.rds")
+
+stadtteil <- wahlergebnisse %>% 
+  select(1, 9:22)
+
+stadtteil[is.na(stadtteil)] = 0
+
+stadtteil <- mutate_if(stadtteil, is.numeric, ~ . * 100 / wahlergebnisse$gultige_stimmen)
+
+mig_ratio <- data.frame(stadtteil_profil$stadtteil, stadtteil_profil$bevolkerung_mit_migrations_hintergrund * 100 / stadtteil_profil$bevolkerung)
+
+migXafd <- stadtteil %>% 
+  select(bezeichnung, af_d) %>% 
+  arrange(desc(2)) %>% 
+  left_join(mig_ratio, by = c("bezeichnung" = "stadtteil_profil.stadtteil"))
+  
+
+### --- ToDos --- ###
+colnames(stadtteil)[1] <- "stadtteil"
+
+migrantsPerDistrict <- stadtteil_profil %>% 
+  select(1, 10)
+
+stadtteil <- stadtteil %>% 
+  full_join(migrantsPerDistrict, by = c("stadtteil" = "stadtteil"))
+  
+# combined 
+  # select("stadtteil", "mig_ratio", "afd", "turn_out")
+
 
 if (
   assert_that(
