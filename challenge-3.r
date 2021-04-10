@@ -1,5 +1,6 @@
 ### --- R Challange 3, Alvin Aziz, 08.04.2021 --- ###
 library(assertthat)
+library(tidyverse)
 library(dplyr)
 library(tidyr)
 
@@ -9,42 +10,42 @@ library(tidyr)
 # * Hint: investigate the function `across()` for applying calculation on multiple columns at once.
 # X Calculate the ratio of people with a migration background in the total population of each district.
 # X Compare migration ratio to results of the AfD
-# * Compare the voter turnout to both other variables.
-# * Join the two data sets.
-# * Arrange by the AFD's results in descending order. 
+# X Compare the voter turnout to both other variables.
+# X Join the two data sets.
+# X Arrange by the AFD's results in descending order. 
 # * Prepare to discuss in the next session!
 # * Hint: the final table must have the following columns: stadtteil, mig_ratio, turn_out, afd.
 
-
+### --- Load results --- ###
 wahlergebnisse = readRDS("./wahlergebnisse.rds")
 stadtteil_profil = readRDS("./stadtteil_profil.rds")
 
-stadtteil <- wahlergebnisse %>% 
+### --- Each parties' election results per district --- ###
+resultPerDist <- wahlergebnisse %>% 
   select(1, 9:22)
+resultPerDist[is.na(resultPerDist)] = 0
+resultPerDist <- mutate_if(resultPerDist, is.numeric, ~ . / wahlergebnisse$gultige_stimmen)
 
-stadtteil[is.na(stadtteil)] = 0
+### --- Ratio of people with a migration background and the population of each district)
+mig_ratio <- data.frame(stadtteil_profil$stadtteil, stadtteil_profil$bevolkerung_mit_migrations_hintergrund / stadtteil_profil$bevolkerung)
 
-stadtteil <- mutate_if(stadtteil, is.numeric, ~ . * 100 / wahlergebnisse$gultige_stimmen)
-
-mig_ratio <- data.frame(stadtteil_profil$stadtteil, stadtteil_profil$bevolkerung_mit_migrations_hintergrund * 100 / stadtteil_profil$bevolkerung)
-
-migXafd <- stadtteil %>% 
+### --- Migration ratio compared to votes for AfD --- ###
+migXafd <- resultPerDist %>% 
   select(bezeichnung, af_d) %>% 
-  arrange(desc(2)) %>% 
-  left_join(mig_ratio, by = c("bezeichnung" = "stadtteil_profil.stadtteil"))
+  left_join(mig_ratio, by = c("bezeichnung" = "stadtteil_profil.stadtteil")) %>% 
+  rename(
+    afd = af_d,
+    stadtteil = bezeichnung
+    )
+
+### --- Voter turnouts and joined data set --- ###
+combined <- migXafd %>% 
+  select(1:3) %>% 
+  mutate(turn_out = wahlergebnisse$wahlende / wahlergebnisse$wahlberechtigte_insgesamt) %>% 
+  arrange(desc(afd))
   
-
-### --- ToDos --- ###
-colnames(stadtteil)[1] <- "stadtteil"
-
-migrantsPerDistrict <- stadtteil_profil %>% 
-  select(1, 10)
-
-stadtteil <- stadtteil %>% 
-  full_join(migrantsPerDistrict, by = c("stadtteil" = "stadtteil"))
+colnames(combined)[3] <- "mig_ratio"
   
-# combined 
-  # select("stadtteil", "mig_ratio", "afd", "turn_out")
 
 
 if (
